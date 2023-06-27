@@ -226,7 +226,7 @@ def __ParsePrices(soup):
 def __ParseRawPrice(string):
     parsedPrice = parse_price(string, decimal_separator=".")
     if parsedPrice:
-        return parsedPrice.amount
+        return float(parsedPrice.amount)
     else:
         return None
 
