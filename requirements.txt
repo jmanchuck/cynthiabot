@@ -1,0 +1,9 @@
+black
+ebaysdk
+discord.py
+python-dotenv
+spacy
+pytest
+bs4
+price-parser
+currencyconverter
