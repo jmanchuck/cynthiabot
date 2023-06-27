@@ -114,6 +114,56 @@ async def _ebay_lookup(ctx, query):
 
 
 @bot.slash_command(
+    name="delta",
+    description="Searches PSA 9, PSA 10 solds and current eBay listings given a query",
+    options=[Option(name="query", description="Search string")],
+)
+async def delta(ctx, query: str):
+    ebay_query = " ".join([f'"{a}"' for a in query.split(" ")])
+
+    result, search_url = find(query, include_auction=False)
+
+    if len(result) == 0:
+        await ctx.send(f"Couldn't find listings for {query} 😞")
+        return
+
+    price_list = [
+        float(row["sellingStatus"]["convertedCurrentPrice"]["value"]) for row in result
+    ]
+
+    average = sum(price_list) / len(result)
+
+    embed = Embed(title=f"{query}", colour=Colour.teal(), url=search_url)
+
+    embed.set_image(url=result[0]["galleryURL"])
+
+    embed.add_field(name="Min/Max", value=f"{min(price_list)} / {max(price_list)}")
+    embed.add_field(name="Average", value=f"£{average:.2f}")
+
+    # PSA sold lookup
+
+    psa9_averages = psa_ebay_average(query, 9)
+    embed.add_field(
+        name="PSA 9 Average Sold",
+        value=f"[£{psa9_averages['total']}]({psa9_averages['url']})"
+        if psa9_averages["count"] != 0
+        else "N/A",
+    )
+    embed.add_field(name="PSA 9 Sold Count", value=psa9_averages["count"])
+
+    psa10_averages = psa_ebay_average(query, 10)
+    embed.add_field(
+        name="PSA 10 Average Sold",
+        value=f"[£{psa10_averages['total']}]({psa10_averages['url']})"
+        if psa10_averages["count"] != 0
+        else "N/A",
+    )
+    embed.add_field(name="PSA 10 Sold Count", value=psa10_averages["count"])
+
+    await ctx.send(embed=embed)
+
+
+@bot.slash_command(
     name="tcgrepublic",
     description="Pulls all cards from tcgrepublic page then searches PSA 9 solds, PSA 10 solds and eBay listings",
     options=[
