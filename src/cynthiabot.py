@@ -110,7 +110,17 @@ async def _ebay_lookup(ctx, query):
     embed.add_field(name="Min/Max", value=f"{min(price_list)} / {max(price_list)}")
     embed.add_field(name="Average", value=f"${average:.2f}")
 
-    await ctx.send(embed=embed)
+    await ctx.respond(embed=embed)
+
+
+@bot.slash_command(name="hi", description="Say hello!")
+async def hi(ctx):
+    await ctx.respond("Hi!")
+
+
+@bot.slash_command(name="bye", description="Say goodbye")
+async def bye(ctx):
+    await ctx.respond("Bye!")
 
 
 @bot.slash_command(
@@ -121,7 +131,7 @@ async def _ebay_lookup(ctx, query):
 async def delta(ctx, query: str):
     ebay_query = " ".join([f'"{a}"' for a in query.split(" ")])
 
-    result, search_url = find(query, include_auction=False)
+    result, search_url = find(ebay_query, include_auction=False)
 
     if len(result) == 0:
         await ctx.send(f"Couldn't find listings for {query} 😞")
@@ -142,7 +152,7 @@ async def delta(ctx, query: str):
 
     # PSA sold lookup
 
-    psa9_averages = psa_ebay_average(query, 9)
+    psa9_averages = psa_ebay_average(ebay_query, 9)
     embed.add_field(
         name="PSA 9 Average Sold",
         value=f"[£{psa9_averages['total']}]({psa9_averages['url']})"
@@ -151,7 +161,7 @@ async def delta(ctx, query: str):
     )
     embed.add_field(name="PSA 9 Sold Count", value=psa9_averages["count"])
 
-    psa10_averages = psa_ebay_average(query, 10)
+    psa10_averages = psa_ebay_average(ebay_query, 10)
     embed.add_field(
         name="PSA 10 Average Sold",
         value=f"[£{psa10_averages['total']}]({psa10_averages['url']})"
