@@ -1,6 +1,6 @@
 black
 ebaysdk
-discord.py
+py-cord
 python-dotenv
 spacy
 pytest

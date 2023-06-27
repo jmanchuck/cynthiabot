@@ -1,23 +1,36 @@
 import os
 from dotenv import load_dotenv
-from discord.ext import commands
-from discord import Colour, Embed, Intents
-from cynthiabot_processor import psa_ebay_average
+import discord
+from discord import Colour, Embed, Intents, Option
 
+from src.cynthiabot_processor import psa_ebay_average
 from src.ebay.completed import Average
 from src.ebay.scrape import find
 from src.tcgrepublic.scrape import get_html, parse_items
 
 from currency_converter import CurrencyConverter
 
+import logging
+
+logger = logging.getLogger("discord")
+logger.setLevel(logging.DEBUG)
+handler = logging.FileHandler(filename="discord.log", encoding="utf-8", mode="w")
+handler.setFormatter(
+    logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s")
+)
+logger.addHandler(handler)
+
 load_dotenv()
-TOKEN = os.getenv("DISCORD_TOKEN")
+TOKEN = str(os.getenv("TOKEN"))
 GUILD = os.getenv("DISCORD_GUILD")
 
 intents = Intents.default()
 intents.messages = True
 intents.message_content = True
-bot = commands.Bot(command_prefix="/", intents=intents)
+
+# bot = commands.Bot(command_prefix="/", intents=intents)
+
+bot = discord.Bot(intents=intents)
 
 cynthia_general = 1118633292963528737
 
@@ -37,40 +50,47 @@ async def on_ready():
 async def on_disconnect():
     channel = bot.get_channel(cynthia_general)
     if channel:
+        bot.tree.clear_commands()
         await channel.send("I'm logging off, bye!👋👋")
     else:
         print(f"Channel with ID {cynthia_general} not found.")
 
 
-@bot.command()
-async def query(ctx, *args):
-    print(f"Query arguments: {', '.join(args)}")
-
-
-@bot.command(name="psa")
-async def _psa_lookup(ctx, grade: int, *args):
-    print(f"Looking up PSA {grade} for card {' '.join(args)}")
+@bot.slash_command(
+    name="psa",
+    description="Search PSA solds",
+    options=[
+        Option(name="grade", description="PSA grade"),
+        Option(name="query", description="Search string"),
+    ],
+)
+async def psa(ctx, grade: int, query):
+    print(f"Looking up PSA {grade} for card {query}")
 
     # Put "" around each word to force
-    query = " ".join([f'"{a}"' for a in args]) + f" PSA+{grade}"
+    ebay_query = " ".join([f'"{a}"' for a in query.split(" ")]) + f" PSA+{grade}"
 
-    averages = Average(query, country="uk")
+    averages = Average(ebay_query, country="uk")
 
     embed = Embed(title=query, colour=Colour.teal(), url=averages["url"])
 
     embed.add_field(name=f"Average Sold", value=f"{averages['total']} GBP")
     embed.add_field(name=f"Number of items", value=averages["count"])
 
-    await ctx.send(embed=embed)
+    await ctx.respond(embed=embed)
 
 
-@bot.command(name="ebay")
-async def _ebay_lookup(ctx, *args):
-    print(f"Looking for card {' '.join(args)}")
+@bot.slash_command(
+    name="ebay",
+    description="Search eBay listings",
+    options=[Option(name="query", description="Search string")],
+)
+async def _ebay_lookup(ctx, query):
+    print(f"Looking for card {query}")
 
-    query = " ".join([f'"{a}"' for a in args])
+    ebay_query = " ".join([f'"{a}"' for a in query.split(" ")])
 
-    result, search_url = find(query)
+    result, search_url = find(ebay_query)
 
     print(search_url)
 
@@ -84,7 +104,7 @@ async def _ebay_lookup(ctx, *args):
 
     average = CurrencyConverter.convert(sum(price_list) / len(result), "USD", "GBP")
 
-    embed = Embed(title=" ".join(args), colour=Colour.gold(), url=search_url)
+    embed = Embed(title=query, colour=Colour.gold(), url=search_url)
 
     embed.set_image(url=result[0]["galleryURL"])
 
@@ -94,8 +114,14 @@ async def _ebay_lookup(ctx, *args):
     await ctx.send(embed=embed)
 
 
-@bot.command(name="tcgrepublic")
-async def _tcgrepublic(ctx, url: str):
+@bot.slash_command(
+    name="tcgrepublic",
+    description="Pulls all cards from tcgrepublic page then searches PSA 9 solds, PSA 10 solds and eBay listings",
+    options=[
+        Option(name="url", description="tcgrepublic link"),
+    ],
+)
+async def tcgrepublic(ctx, url: str):
     print(f"Analysing prices on tcgrepublic link: {url}")
 
     items = parse_items(get_html(url))
@@ -134,6 +160,7 @@ async def _tcgrepublic(ctx, url: str):
             if psa9_averages["count"] != 0
             else "N/A",
         )
+        embed.add_field(name="PSA 9 Sold Count", value=psa9_averages["count"])
 
         psa10_averages = psa_ebay_average(query, 10)
         embed.add_field(
@@ -142,6 +169,7 @@ async def _tcgrepublic(ctx, url: str):
             if psa10_averages["count"] != 0
             else "N/A",
         )
+        embed.add_field(name="PSA 10 Sold Count", value=psa10_averages["count"])
 
         if psa10_averages["total"] > average or psa9_averages["total"] > average:
             highlights.append(
@@ -158,6 +186,5 @@ async def _tcgrepublic(ctx, url: str):
     await ctx.send(f"Highlights: {highlights_summary}")
 
 
-# bot.loop.create_task()
 def start():
     bot.run(TOKEN)

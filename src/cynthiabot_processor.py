@@ -1,4 +1,4 @@
-from ebay.completed import Average
+from src.ebay.completed import Average
 
 
 def psa_ebay_average(query: str, grade: int):
