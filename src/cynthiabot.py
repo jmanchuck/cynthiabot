@@ -50,7 +50,6 @@ async def on_ready():
 async def on_disconnect():
     channel = bot.get_channel(cynthia_general)
     if channel:
-        bot.tree.clear_commands()
         await channel.send("I'm logging off, bye!👋👋")
     else:
         print(f"Channel with ID {cynthia_general} not found.")
@@ -126,8 +125,6 @@ async def tcgrepublic(ctx, url: str):
 
     items = parse_items(get_html(url))
 
-    highlights = []
-
     for name, number in items:
         query = f'"{name}" "{number}"'
         display_query = f"{name} {number}"
@@ -172,18 +169,8 @@ async def tcgrepublic(ctx, url: str):
         embed.add_field(name="PSA 10 Sold Count", value=psa10_averages["count"])
 
         if psa10_averages["total"] > average or psa9_averages["total"] > average:
-            highlights.append(
-                f"{display_query}, Average: {average}, PSA 9 {psa9_averages['total']}, PSA 10 {psa10_averages['total']}"
-            )
             embed.colour = Colour.green()
-
             await ctx.send(embed=embed)
-
-        elif psa10_averages["total"] > min(price_list):
-            await ctx.send(embed=embed)
-
-    highlights_summary = "\n".join(highlights)
-    await ctx.send(f"Highlights: {highlights_summary}")
 
 
 def start():
