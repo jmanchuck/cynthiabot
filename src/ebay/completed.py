@@ -225,10 +225,9 @@ def __ParsePrices(soup):
 
 def __ParseRawPrice(string):
     parsedPrice = parse_price(string, decimal_separator=".")
-    if parsedPrice:
-        return float(parsedPrice.amount | 0)
-    else:
-        return None
+    if parsedPrice and parsedPrice.amount:
+        return float(parsedPrice.amount)
+    return None
 
 
 def __Average(numberList):
