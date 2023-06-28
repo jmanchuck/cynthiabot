@@ -6,3 +6,4 @@ discord.log
 pip-wheel-metadata
 .DS_STORE
 *.egg-info
+.pytest_cache
