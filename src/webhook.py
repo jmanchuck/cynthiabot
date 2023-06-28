@@ -27,4 +27,4 @@ def send_message(text: str):
 
 
 if __name__ == "__main__":
-    send_message("Good night!")
+    send_message("Shut the fuck up bitch!")

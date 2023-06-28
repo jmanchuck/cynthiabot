@@ -7,3 +7,4 @@ pytest
 bs4
 price-parser
 currencyconverter
+PyHamcrest

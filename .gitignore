@@ -3,3 +3,6 @@ venv
 __pycache__
 .env
 discord.log
+pip-wheel-metadata
+.DS_STORE
+*.egg-info

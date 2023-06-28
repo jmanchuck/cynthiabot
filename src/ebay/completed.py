@@ -196,10 +196,12 @@ def __ParseItems(soup):
     return sorted(data, key=lambda dic: dic["price"] + dic["shipping"])
 
 
-def parseEbaySoupPrices(soup):
+def parseEbaySoupPrices(soup: BeautifulSoup):
+    search_result_soup = soup.find("div", {"id": "srp-river-main"})
     # Get item prices
     rawPriceList = [
-        price.get_text(strip=True) for price in soup.find_all(class_="s-item__price")
+        price.get_text(strip=True)
+        for price in search_result_soup.find_all(class_="s-item__price")
     ]
     rawPriceList = rawPriceList[1:]
     priceList = [
