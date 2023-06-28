@@ -1,10 +1,10 @@
 import os
 from dotenv import load_dotenv
 import discord
-from discord import Colour, Embed, Intents, Option
+from discord import ApplicationContext, Colour, Embed, Intents, Interaction, Option
 
 from src.cynthiabot_processor import psa_ebay_average
-from src.ebay.completed import Average
+from src.ebay.completed import averageEbayPrices
 from src.ebay.scrape import find
 from src.tcgrepublic.scrape import get_html, parse_items
 
@@ -27,8 +27,6 @@ GUILD = os.getenv("DISCORD_GUILD")
 intents = Intents.default()
 intents.messages = True
 intents.message_content = True
-
-# bot = commands.Bot(command_prefix="/", intents=intents)
 
 bot = discord.Bot(intents=intents)
 
@@ -63,20 +61,26 @@ async def on_disconnect():
         Option(name="query", description="Search string"),
     ],
 )
-async def psa(ctx, grade: int, query):
+async def psa(ctx: ApplicationContext, grade: int, query):
     print(f"Looking up PSA {grade} for card {query}")
+    loading_message = await ctx.respond("Loading...")
 
     # Put "" around each word to force
     ebay_query = " ".join([f'"{a}"' for a in query.split(" ")]) + f" PSA+{grade}"
 
-    averages = Average(ebay_query, country="uk")
+    averages = averageEbayPrices(ebay_query, country="uk")
 
-    embed = Embed(title=query, colour=Colour.teal(), url=averages["url"])
+    embed = Embed(
+        title=query,
+        colour=Colour.teal(),
+        url=averages["url"],
+        description=f"PSA {grade}",
+    )
 
     embed.add_field(name=f"Average Sold", value=f"{averages['total']} GBP")
     embed.add_field(name=f"Number of items", value=averages["count"])
 
-    await ctx.respond(embed=embed)
+    await loading_message.edit_original_response(content="", embed=embed)
 
 
 @bot.slash_command(
@@ -84,8 +88,9 @@ async def psa(ctx, grade: int, query):
     description="Search eBay listings",
     options=[Option(name="query", description="Search string")],
 )
-async def _ebay_lookup(ctx, query):
+async def ebay(ctx: ApplicationContext, query):
     print(f"Looking for card {query}")
+    loading_message: Interaction = await ctx.respond("Loading...")
 
     ebay_query = " ".join([f'"{a}"' for a in query.split(" ")])
 
@@ -94,33 +99,33 @@ async def _ebay_lookup(ctx, query):
     print(search_url)
 
     if len(result) == 0:
-        await ctx.send("ERROR COULD NOT FIND LISTINGS")
+        await ctx.respond("Could not find any listings")
         return
 
     price_list = [
         float(row["sellingStatus"]["convertedCurrentPrice"]["value"]) for row in result
     ]
 
-    average = CurrencyConverter.convert(sum(price_list) / len(result), "USD", "GBP")
+    average = CurrencyConverter().convert(sum(price_list) / len(result), "USD", "GBP")
 
     embed = Embed(title=query, colour=Colour.gold(), url=search_url)
 
     embed.set_image(url=result[0]["galleryURL"])
 
     embed.add_field(name="Min/Max", value=f"{min(price_list)} / {max(price_list)}")
-    embed.add_field(name="Average", value=f"${average:.2f}")
+    embed.add_field(name="Average", value=f"£{average:.2f}")
 
-    await ctx.respond(embed=embed)
+    await loading_message.edit_original_response(content="", embed=embed)
 
 
 @bot.slash_command(name="hi", description="Say hello!")
-async def hi(ctx):
-    await ctx.respond("Hi!")
+async def hi(ctx: ApplicationContext):
+    await ctx.respond(f"Hi {ctx.author.display_name}!")
 
 
 @bot.slash_command(name="bye", description="Say goodbye")
-async def bye(ctx):
-    await ctx.respond("Bye!")
+async def bye(ctx: ApplicationContext):
+    await ctx.respond(f"Bye {ctx.author.display_name}!")
 
 
 @bot.slash_command(
@@ -128,7 +133,8 @@ async def bye(ctx):
     description="Searches PSA 9, PSA 10 solds and current eBay listings given a query",
     options=[Option(name="query", description="Search string")],
 )
-async def delta(ctx, query: str):
+async def delta(ctx: ApplicationContext, query: str):
+    loading_message: Interaction = await ctx.respond("Loading...")
     ebay_query = " ".join([f'"{a}"' for a in query.split(" ")])
 
     result, search_url = find(ebay_query, include_auction=False)
@@ -170,7 +176,7 @@ async def delta(ctx, query: str):
     )
     embed.add_field(name="PSA 10 Sold Count", value=psa10_averages["count"])
 
-    await ctx.send(embed=embed)
+    await loading_message.edit_original_response(content="", embed=embed)
 
 
 @bot.slash_command(
@@ -180,9 +186,10 @@ async def delta(ctx, query: str):
         Option(name="url", description="tcgrepublic link"),
     ],
 )
-async def tcgrepublic(ctx, url: str):
+async def tcgrepublic(ctx: ApplicationContext, url: str):
     print(f"Analysing prices on tcgrepublic link: {url}")
 
+    loading_message = await ctx.respond("Loading...")
     items = parse_items(get_html(url))
 
     for name, number in items:
@@ -230,8 +237,12 @@ async def tcgrepublic(ctx, url: str):
 
         if psa10_averages["total"] > average or psa9_averages["total"] > average:
             embed.colour = Colour.green()
-            await ctx.send(embed=embed)
+            await ctx.respond(embed=embed)
 
 
 def start():
     bot.run(TOKEN)
+
+
+if __name__ == "__main__":
+    start()

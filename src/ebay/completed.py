@@ -1,4 +1,3 @@
-import re
 import urllib.parse
 import urllib.request
 from bs4 import BeautifulSoup
@@ -60,13 +59,13 @@ def Items(query, country="us", condition="all", type="all"):
             + ", ".join(typeDict.keys())
         )
 
-    soup, _ = __GetHTML(query, country, condition, type, alreadySold=False)
+    soup, _ = getHtmlSoup(query, country, condition, type, alreadySold=False)
     data = __ParseItems(soup)
 
     return data
 
 
-def Average(query, country="us", condition="all"):
+def averageEbayPrices(query, country="us", condition="all"):
     if country not in countryDict:
         raise Exception(
             "Country not supported, please use one of the following: "
@@ -79,11 +78,11 @@ def Average(query, country="us", condition="all"):
             + ", ".join(conditionDict.keys())
         )
 
-    soup, url = __GetHTML(query, country, condition, type="all", alreadySold=True)
-    data = __ParsePrices(soup)
+    soup, url = getHtmlSoup(query, country, condition, type="all", alreadySold=True)
+    data = parseEbaySoupPrices(soup)
 
-    avgPrice = round(__Average(data["price-list"]), 2)
-    avgShipping = round(__Average(data["shipping-list"]), 2)
+    avgPrice = round(average(data["price-list"]), 2)
+    avgShipping = round(average(data["shipping-list"]), 2)
 
     return {
         "price": avgPrice,
@@ -94,7 +93,7 @@ def Average(query, country="us", condition="all"):
     }
 
 
-def __GetHTML(query, country, condition="", type="all", alreadySold=True):
+def getHtmlSoup(query, country, condition="", type="all", alreadySold=True):
     alreadySoldString = "&LH_Complete=1&LH_Sold=1" if alreadySold else ""
 
     # Build the URL
@@ -124,12 +123,12 @@ def __ParseItems(soup):
         # Get item data
         title = item.find(class_="s-item__title").find("span").get_text(strip=True)
 
-        price = __ParseRawPrice(
+        price = parseRawPrice(
             item.find("span", {"class": "s-item__price"}).get_text(strip=True)
         )
 
         try:
-            shipping = __ParseRawPrice(
+            shipping = parseRawPrice(
                 item.find("span", {"class": "s-item__shipping s-item__logisticsCost"})
                 .find("span", {"class": "ITALIC"})
                 .get_text(strip=True)
@@ -197,16 +196,15 @@ def __ParseItems(soup):
     return sorted(data, key=lambda dic: dic["price"] + dic["shipping"])
 
 
-def __ParsePrices(soup):
+def parseEbaySoupPrices(soup):
     # Get item prices
     rawPriceList = [
         price.get_text(strip=True) for price in soup.find_all(class_="s-item__price")
     ]
     rawPriceList = rawPriceList[1:]
-    print(f"Raw price List: " + str(rawPriceList))
     priceList = [
         price
-        for price in map(lambda rawPrice: __ParseRawPrice(rawPrice), rawPriceList)
+        for price in map(lambda rawPrice: parseRawPrice(rawPrice), rawPriceList)
         if price != None
     ]
 
@@ -216,21 +214,21 @@ def __ParsePrices(soup):
         for item in soup.find_all(class_="s-item__shipping s-item__logisticsCost")
     ]
     rawShippingList = rawShippingList[1:]
-    shippingList = map(lambda rawPrice: __ParseRawPrice(rawPrice), rawShippingList)
+    shippingList = map(lambda rawPrice: parseRawPrice(rawPrice), rawShippingList)
     shippingList = [0 if price == None else price for price in shippingList]
 
     data = {"price-list": priceList, "shipping-list": shippingList}
     return data
 
 
-def __ParseRawPrice(string):
+def parseRawPrice(string):
     parsedPrice = parse_price(string, decimal_separator=".")
     if parsedPrice and parsedPrice.amount:
         return float(parsedPrice.amount)
     return None
 
 
-def __Average(numberList):
+def average(numberList):
     if len(list(numberList)) == 0:
         return 0
     return sum(numberList) / len(list(numberList))
