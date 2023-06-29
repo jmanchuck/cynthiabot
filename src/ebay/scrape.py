@@ -1,10 +1,10 @@
-from urllib.parse import urlencode, quote
+import logging
 from pathlib import Path
 from ebaysdk.finding import Connection as Finding
 
-from pprint import pprint
-
 from src.ebay import scrape
+
+logger = logging.getLogger("cynthiabot")
 
 ITEM_KEYS = [
     "title",
@@ -25,14 +25,6 @@ config_file_path = Path(scrape.__file__).resolve().parent / "ebay.yaml"
 api = Finding(config_file=config_file_path)
 
 
-def find_by_product(item_id: int):
-    request = {"itemId": item_id}
-
-    response = api.execute("findItemsAdvanced", request)
-
-    pprint(response.dict())
-
-
 def find(query: str, sort_order: str = None, include_auction=True):
     request = {
         "keywords": query + " JAPANESE" + IGNORE_SEARCH,
@@ -44,7 +36,7 @@ def find(query: str, sort_order: str = None, include_auction=True):
     if sort_order:
         request["sortOrder"] = sort_order
 
-    print(f"Ebay find request: {request}")
+    logger.info(f"Ebay find request: {request}")
 
     response = api.execute("findItemsByKeywords", request)
 
@@ -60,15 +52,13 @@ def find(query: str, sort_order: str = None, include_auction=True):
             for item in response.dict()["searchResult"]["item"]
         ]
     except KeyError:
-        print(
+        logging.error(
             f"Could not find key item in search result = {response.dict()['searchResult']}"
         )
         return (
             [],
             f"https://www.ebay.co.uk/sch/i.html?_nkw={request['keywords'].replace(' ', '+')}",
         )
-
-    # pprint(filtered)
 
     return (
         filtered,

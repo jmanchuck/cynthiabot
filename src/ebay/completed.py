@@ -1,7 +1,10 @@
 import urllib.parse
 import urllib.request
+import logging
 from bs4 import BeautifulSoup
 from price_parser import parse_price
+
+logger = logging.getLogger("cynthiabot")
 
 countryDict = {
     "au": ".com.au",
@@ -106,7 +109,7 @@ def getHtmlSoup(query, country, condition="", type="all", alreadySold=True):
         + typeDict[type]
     )
 
-    print(f"HTML url: {url}")
+    logger.info(f"HTML url: {url}")
 
     # Get the web page HTML
     request = urllib.request.urlopen(url)

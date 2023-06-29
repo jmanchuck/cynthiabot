@@ -12,13 +12,7 @@ from currency_converter import CurrencyConverter
 
 import logging
 
-logger = logging.getLogger("discord")
-logger.setLevel(logging.DEBUG)
-handler = logging.FileHandler(filename="discord.log", encoding="utf-8", mode="w")
-handler.setFormatter(
-    logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s")
-)
-logger.addHandler(handler)
+logger = logging.getLogger("cynthiabot")
 
 load_dotenv()
 TOKEN = str(os.getenv("TOKEN"))
@@ -35,22 +29,13 @@ cynthia_general = 1118633292963528737
 
 @bot.event
 async def on_ready():
-    print(f"Logged in as {bot.user.name} ({bot.user.id})")
+    logger.info(f"Logged in as {bot.user.name} ({bot.user.id})")
     channel = bot.get_channel(cynthia_general)
     if channel:
         await channel.send("I'm ready, let's get started!")
     else:
-        print(f"Channel with ID {cynthia_general} not found.")
+        logger.info(f"Channel with ID {cynthia_general} not found.")
         await bot.close()
-
-
-@bot.event
-async def on_disconnect():
-    channel = bot.get_channel(cynthia_general)
-    if channel:
-        await channel.send("I'm logging off, bye!👋👋")
-    else:
-        print(f"Channel with ID {cynthia_general} not found.")
 
 
 @bot.slash_command(
@@ -62,7 +47,7 @@ async def on_disconnect():
     ],
 )
 async def psa(ctx: ApplicationContext, grade: int, query):
-    print(f"Looking up PSA {grade} for card {query}")
+    logger.info(f"Looking up PSA {grade} for card {query}")
     loading_message = await ctx.respond("Loading...")
 
     # Put "" around each word to force
@@ -89,14 +74,12 @@ async def psa(ctx: ApplicationContext, grade: int, query):
     options=[Option(name="query", description="Search string")],
 )
 async def ebay(ctx: ApplicationContext, query):
-    print(f"Looking for card {query}")
+    logger.info(f"Looking for card {query}")
     loading_message: Interaction = await ctx.respond("Loading...")
 
     ebay_query = " ".join([f'"{a}"' for a in query.split(" ")])
 
     result, search_url = find(ebay_query)
-
-    print(search_url)
 
     if len(result) == 0:
         await ctx.respond("Could not find any listings")
@@ -134,6 +117,7 @@ async def bye(ctx: ApplicationContext):
     options=[Option(name="query", description="Search string")],
 )
 async def delta(ctx: ApplicationContext, query: str):
+    logger.info(f"Delta check for {query}")
     loading_message: Interaction = await ctx.respond("Loading...")
     ebay_query = " ".join([f'"{a}"' for a in query.split(" ")])
 
@@ -187,9 +171,9 @@ async def delta(ctx: ApplicationContext, query: str):
     ],
 )
 async def tcgrepublic(ctx: ApplicationContext, url: str):
-    print(f"Analysing prices on tcgrepublic link: {url}")
+    logger.info(f"Analysing prices on tcgrepublic link: {url}")
 
-    loading_message = await ctx.respond("Loading...")
+    await ctx.respond("Loading...")
     items = parse_items(get_html(url))
 
     for name, number in items:
